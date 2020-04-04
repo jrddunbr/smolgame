@@ -4,6 +4,8 @@
 # Use this as an example for a basic game.
 
 import pyxel, random
+import os.path
+from os import path
 
 # Width and height of game, in tiles
 WIDTH = 12
@@ -23,9 +25,20 @@ textures = {}
 # This sets up all the rendering code for ya. Give it a image,
 #   and it will remember the thing for you. WARNING! VERY BASIC
 class Drawn():
-    def __init__(self, n, name, texture="invalid.png"):
-        self.loc = n*16
-        pyxel.image(0).load(0, self.loc, texture)
+    def __init__(self, name, texture="invalid.png"):
+        # Only register if we're not in the texture map
+        if (name not in textures):
+
+            # This makes sure that your game doesn't crash if there's an invalid
+            #   texture path.
+            if not path.exists(texture):
+                texture = "invalid.png"
+
+            # There are 256 pixels wide so this class can store up to 16
+            #   textures. Textures are always 16x16 for simplicity
+            self.loc = len(textures)*16
+            pyxel.image(0).load(0, self.loc, texture)
+            textures[name] = self
 
     def draw(self, x, y):
         pyxel.blt(x * 16, y * 16, 0, 0, self.loc, 16, 16)
@@ -37,10 +50,8 @@ class Entity():
         self.x = x
         self.y = y
         self.allow = False
-        self.texName = texture[:-4] # remove .png
-        if self.texName not in textures:
-            d = Drawn(len(textures), self.texName, texture)
-            textures[self.texName] = d
+        self.texName = texture.rsplit(".",1)[0] # remove file extension
+        Drawn(self.texName, texture)
 
     def update(self):
         pass
@@ -108,6 +119,10 @@ def setup():
     # Register our player
     player = Player("player")
     entities.append(player)
+
+    # Invalid texture test code
+    #random = Entity("random", "random.png")
+    #entities.append(random)
 
 # Generate the world! You can use this to generate levels or whatever
 def worldgen():
