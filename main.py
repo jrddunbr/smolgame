@@ -19,6 +19,9 @@ structures = []
 #   into structures unless the structure has "allow" set to True
 entities = []
 
+# Sound mappings
+sounds = {}
+
 # These are the texture maps for 8x8 and 16x16
 texture8 = {}
 texture16 = {}
@@ -72,6 +75,16 @@ class Drawn():
             # Bank 1: Draw 8x8
             pyxel.blt(x*8, y*8, self.bank, self.xLoc, self.yLoc, 8, 8, self.trans)
 
+class Sounded():
+    def __init__(self, name, notes, tone="s", volume="4", effect="", speed="7"):
+        self.id = len(sounds)
+        pyxel.sound(self.id).set(note=notes, tone=tone, volume=volume, effect=effect, speed=speed)
+        sounds[name] = self
+
+    # There are 4 streams - 0 through 3
+    def play(self, stream=0):
+        pyxel.play(stream, self.id)
+
 # This is the base class of any thing that renders to the screen and ticks.
 class Entity():
     def __init__(self, name, texture="invalid16.png", x=0, y=0):
@@ -121,10 +134,10 @@ class Player(Entity):
 def canGo(x, y, a, b):
     # Don't allow to exit past the edges of the screen
     if ((x+a) < 0 or (x+a) >= WIDTH):
-        pyxel.play(0, 0)
+        sounds["collide"].play(0)
         return False
     if ((y+b) < 0 or (y+b) >= HEIGHT):
-        pyxel.play(0, 0)
+        sounds["collide"].play(0)
         return False
 
     # Basic structure checks in direction
@@ -132,7 +145,7 @@ def canGo(x, y, a, b):
         if (s.x == (x+a)) and (s.y == (y+b)):
             if s.allow:
                 return True
-            pyxel.play(0, 0)
+            sounds["collide"].play(0)
             return False
 
     # Advanced structure checks on diagonals
@@ -145,7 +158,7 @@ def canGo(x, y, a, b):
             if (s.x == x) and (s.y == (y+b)):
                 yCheck = not s.allow
         if xCheck and yCheck:
-            pyxel.play(0, 0)
+            sounds["collide"].play(0)
             return False
 
     return True
@@ -156,12 +169,8 @@ def setup():
     pyxel.init(WIDTH * 16, HEIGHT * 16, caption="smolgame", scale=4, fps=20)
 
     # Register sounds
-    pyxel.sound(0).set(
-        note="c2c1", tone="s", volume="4", effect=("n" * 4 + "f"), speed=2
-    )
-    pyxel.sound(1).set(
-        note="c3e3g3c4c4", tone="s", volume="4", effect=("n" * 4 + "f"), speed=7
-    )
+    Sounded("collide", "c2c1", "s", "4", ("n" * 4 + "f"), 2)
+    Sounded("level", "c3e3g3c4c4", "s", "4", ("n" * 4 + "f"), 7)
 
     # Register our player
     player = Player("player")
@@ -190,7 +199,7 @@ def update():
 
     # Play a sound if Space
     if pyxel.btn(pyxel.KEY_SPACE):
-        pyxel.play(1, 1)
+        sounds["level"].play(1)
 
     # Tick all entites and structures. The player movement is included randomly
     #   somewhere in this list but you can do a list comprehension to make it
