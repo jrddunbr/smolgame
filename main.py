@@ -15,6 +15,7 @@ HEIGHT = 12
 #   unless they have "allow" set to True
 structures = []
 
+# Window offsets for the panning feature.
 windowOffsetX = 0
 windowOffsetY = 0
 
