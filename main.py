@@ -76,7 +76,7 @@ class Drawn():
             pyxel.blt(x*8, y*8, self.bank, self.xLoc, self.yLoc, 8, 8, self.trans)
 
 class Sounded():
-    def __init__(self, name, notes, tone="s", volume="4", effect="", speed="7"):
+    def __init__(self, name, notes, tone="s", volume="4", effect=("n" * 4 + "f"), speed=7):
         self.id = len(sounds)
         pyxel.sound(self.id).set(note=notes, tone=tone, volume=volume, effect=effect, speed=speed)
         sounds[name] = self
@@ -169,8 +169,8 @@ def setup():
     pyxel.init(WIDTH * 16, HEIGHT * 16, caption="smolgame", scale=4, fps=20)
 
     # Register sounds
-    Sounded("collide", "c2c1", "s", "4", ("n" * 4 + "f"), 2)
-    Sounded("level", "c3e3g3c4c4", "s", "4", ("n" * 4 + "f"), 7)
+    Sounded("collide", "c2c1", speed=4)
+    Sounded("level", "c3e3g3c4c4")
 
     # Register our player
     player = Player("player")
