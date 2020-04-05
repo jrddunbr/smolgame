@@ -8,8 +8,8 @@ import os.path
 from os import path
 
 # Width and height of game, in tiles
-WIDTH = 12
-HEIGHT = 8
+WIDTH = 16
+HEIGHT = 12
 
 # Entities (should not) be able to walk through structures,
 #   unless they have "allow" set to True
@@ -19,45 +19,74 @@ structures = []
 #   into structures unless the structure has "allow" set to True
 entities = []
 
-# This is the texture map. We're cool and only register things once.
-textures = {}
+# These are the texture maps for 8x8 and 16x16
+texture8 = {}
+texture16 = {}
+
+# Information about the image map:
+
+# Image maps are 256x256. This allows for 256 16x16 textures in one tilemap,
+#   or 1024 8x8 textures in one tilemap
+
+# Image Map 0: 16x16 textures
+# Image Map 1: 8x8 textures
+# Image Map 2: <unused>
 
 # This sets up all the rendering code for ya. Give it a image,
-#   and it will remember the thing for you. WARNING! VERY BASIC
+#   and it will remember the thing for you.
+#   NOTE: transparent is a color key. If -1, doesn't do transparent stuff.
 class Drawn():
-    def __init__(self, name, texture="invalid.png"):
-        # Only register if we're not in the texture map
-        if (name not in textures):
-
-            # This makes sure that your game doesn't crash if there's an invalid
-            #   texture path.
-            if not path.exists(texture):
-                texture = "invalid.png"
-
-            # There are 256 pixels wide so this class can store up to 16
-            #   textures. Textures are always 16x16 for simplicity
-            self.loc = len(textures)*16
-            pyxel.image(0).load(0, self.loc, texture)
-            textures[name] = self
+    def __init__(self, name, size=16, texture="invalid16.png", transparent=-1):
+        if (size != 8) and (size != 16):
+            print("CRITICAL FAIL! Texture is not of correct size!")
+            exit(1)
+        self.trans = transparent
+        if size == 16:
+            # Only register if we're not in the 16x16 texturemap
+            if name not in texture16:
+                if not path.exists(texture):
+                    texture = "invalid16.png"
+                # 16x16 is in bank 0
+                self.bank = 0
+                self.xLoc = int(len(texture16)/16)*16
+                self.yLoc = (len(texture16)%16) * 16
+                pyxel.image(self.bank).load(self.xLoc, self.yLoc, texture)
+                texture16[name] = self
+        elif size == 8:
+            # Only register if we're not in the 8x8 texturemap
+            if name not in texture8:
+                if not path.exists(texture):
+                    texture = "invalid8.png"
+                # 8x8 is in bank 1
+                self.bank = 1
+                self.xLoc = int(len(texture8)/32)*8
+                self.yLoc = (len(texture8)%32)*8
+                pyxel.image(self.bank).load(self.xLoc, self.yLoc, texture)
+                texture8[name] = self
 
     def draw(self, x, y):
-        pyxel.blt(x * 16, y * 16, 0, 0, self.loc, 16, 16)
+        if self.bank == 0:
+            # Bank 0. Draw 16x16
+            pyxel.blt(x*16, y*16, self.bank, self.xLoc, self.yLoc, 16, 16, self.trans)
+        elif  self.bank == 1:
+            # Bank 1: Draw 8x8
+            pyxel.blt(x*8, y*8, self.bank, self.xLoc, self.yLoc, 8, 8, self.trans)
 
 # This is the base class of any thing that renders to the screen and ticks.
 class Entity():
-    def __init__(self, name, texture="invalid.png", x=0, y=0):
+    def __init__(self, name, texture="invalid16.png", x=0, y=0):
         self.name = name
         self.x = x
         self.y = y
         self.allow = False
         self.texName = texture.rsplit(".",1)[0] # remove file extension
-        Drawn(self.texName, texture)
+        Drawn(self.texName, 16, texture)
 
     def update(self):
         pass
 
     def draw(self):
-        textures[self.texName].draw(self.x, self.y)
+        texture16[self.texName].draw(self.x, self.y)
 
 # The player class extends Entity by listening for keyboard events.
 class Player(Entity):
@@ -69,48 +98,66 @@ class Player(Entity):
     def update(self):
         self.cooldown -= 1
         if (self.cooldown <= 0):
+            wantGoX = 0
+            wantGoY = 0
             if pyxel.btn(pyxel.KEY_UP):
-                if canGo(self.x, self.y-1):
-                    self.y -= 1
-                self.cooldown = self.cooldownTime
-            elif pyxel.btn(pyxel.KEY_DOWN):
-                if canGo(self.x, self.y+1):
-                    self.y += 1
-                self.cooldown = self.cooldownTime
-            elif pyxel.btn(pyxel.KEY_LEFT):
-                if canGo(self.x-1,self.y):
-                    self.x -= 1
-                self.cooldown = self.cooldownTime
-            elif pyxel.btn(pyxel.KEY_RIGHT):
-                if canGo(self.x+1,self.y):
-                    self.x += 1
-                self.cooldown = self.cooldownTime
+                wantGoY -= 1
+            if pyxel.btn(pyxel.KEY_DOWN):
+                wantGoY += 1
+            if pyxel.btn(pyxel.KEY_LEFT):
+                wantGoX -= 1
+            if pyxel.btn(pyxel.KEY_RIGHT):
+                wantGoX += 1
+
+            if (wantGoX != 0 or wantGoY != 0):
+                if canGo(self.x, self.y, wantGoX, wantGoY):
+                #if canGo(self.x + wantGoX, self.y + wantGoY, self.x, self.y):
+                    self.x = self.x + wantGoX
+                    self.y = self.y + wantGoY
+                    self.cooldown = self.cooldownTime
 
 # This tells you if an entity is permitted to go somewhere.
-def canGo(x, y):
-    if (x < 0 or x >= WIDTH):
+# From x,y with velocity a,b
+def canGo(x, y, a, b):
+    # Don't allow to exit past the edges of the screen
+    if ((x+a) < 0 or (x+a) >= WIDTH):
         pyxel.play(0, 0)
         return False
-    if (y < 0 or y >= HEIGHT):
+    if ((y+b) < 0 or (y+b) >= HEIGHT):
         pyxel.play(0, 0)
         return False
 
+    # Basic structure checks in direction
     for s in structures:
-        if (s.x == x) and (s.y == y):
+        if (s.x == (x+a)) and (s.y == (y+b)):
             if s.allow:
                 return True
             pyxel.play(0, 0)
             return False
+
+    # Advanced structure checks on diagonals
+    if not (x == a or y == b):
+        xCheck = False
+        yCheck = False
+        for s in structures:
+            if (s.x == (x+a) and (s.y == y)):
+                xCheck = not s.allow
+            if (s.x == x) and (s.y == (y+b)):
+                yCheck = not s.allow
+        if xCheck and yCheck:
+            pyxel.play(0, 0)
+            return False
+
     return True
 
 # This sets up the game
 def setup():
     # Register with Pyxel
-    pyxel.init(WIDTH * 16, HEIGHT * 16, caption="smolgame", scale=8, fps=20)
+    pyxel.init(WIDTH * 16, HEIGHT * 16, caption="smolgame", scale=4, fps=20)
 
     # Register sounds
     pyxel.sound(0).set(
-        note="c2c2", tone="s", volume="4", effect=("n" * 4 + "f"), speed=2
+        note="c2c1", tone="s", volume="4", effect=("n" * 4 + "f"), speed=2
     )
     pyxel.sound(1).set(
         note="c3e3g3c4c4", tone="s", volume="4", effect=("n" * 4 + "f"), speed=7
@@ -143,7 +190,7 @@ def update():
 
     # Play a sound if Space
     if pyxel.btn(pyxel.KEY_SPACE):
-        pyxel.play(0, 1)
+        pyxel.play(1, 1)
 
     # Tick all entites and structures. The player movement is included randomly
     #   somewhere in this list but you can do a list comprehension to make it
