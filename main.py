@@ -113,6 +113,11 @@ class Entity():
         if (drawX >= 0 and drawX < WIDTH) and (drawY >=0 and drawY < HEIGHT):
             texture16[self.texName].draw(drawX, drawY)
 
+class Floor(Entity):
+    def __init__(self, name, x, y):
+        super(Floor, self).__init__(name, "floor.png", x, y)
+        self.allow = True
+
 # The player class extends Entity by listening for keyboard events.
 class Player(Entity):
     def __init__(self, name, x=WIDTH/2, y=HEIGHT/2):
@@ -197,11 +202,27 @@ def setup():
 
 # Generate the world! You can use this to generate levels or whatever
 def worldgen():
-    for a in range(0, 32):
+    # Insert the walls and such
+    for a in range(0, 64):
         x = random.randrange(0, GL_WIDTH - 1)
         y = random.randrange(0, GL_HEIGHT - 1)
         wall = Entity("wall", "wall.png", x, y)
         structures.append(wall)
+
+    # last step: Make the floor. NOTE: This alg is terrible and is O(n^3) at worst.
+    floorList = []
+    for x in range(0, GL_WIDTH):
+        for y in range(0, GL_HEIGHT):
+            hasItem = False
+            for s in structures:
+                if (s.x == x and s.y == y):
+                    hasItem = True
+            if not hasItem:
+                floor = Floor("floor", x, y)
+                floorList.append(floor)
+    # Insert the floor.
+    for a in floorList:
+        structures.append(a)
 
 # This is called by Pyxel every tick, and handles all game inputs
 def update():
@@ -221,17 +242,18 @@ def update():
     #   go first or last if you want (examples provided with no warranty)
     # for x in [x for x in entities if x is Player]
     # for x in [x for x in entities if x is not Player]
-    for x in entities:
-        x.update()
+
     for x in structures:
+        x.update()
+    for x in entities:
         x.update()
 
 # This is called by Pyxel every time the screen needs a redraw, which can be
 #   more than once per tick, but really depends on the FPS?
 def draw():
-    for x in entities:
-        x.draw()
     for x in structures:
+        x.draw()
+    for x in entities:
         x.draw()
 
 # This is where the game setup logic is
