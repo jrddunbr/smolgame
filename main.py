@@ -11,6 +11,10 @@ from os import path
 WIDTH = 16
 HEIGHT = 12
 
+# Width and height of the game level
+GL_WIDTH = 32
+GL_HEIGHT = 32
+
 # Entities (should not) be able to walk through structures,
 #   unless they have "allow" set to True
 structures = []
@@ -144,10 +148,10 @@ class Player(Entity):
 # From x,y with velocity a,b
 def canGo(x, y, a, b):
     # Don't allow to exit past the edges of the screen
-    if ((x+a) < 0 or (x+a) >= WIDTH):
+    if ((x+a) < 0 or (x+a) >= GL_WIDTH):
         sounds["collide"].play(0)
         return False
-    if ((y+b) < 0 or (y+b) >= HEIGHT):
+    if ((y+b) < 0 or (y+b) >= GL_HEIGHT):
         sounds["collide"].play(0)
         return False
 
@@ -193,9 +197,9 @@ def setup():
 
 # Generate the world! You can use this to generate levels or whatever
 def worldgen():
-    for a in range(0, 10):
-        x = random.randrange(0, WIDTH - 1)
-        y = random.randrange(0, HEIGHT - 1)
+    for a in range(0, 32):
+        x = random.randrange(0, GL_WIDTH - 1)
+        y = random.randrange(0, GL_HEIGHT - 1)
         wall = Entity("wall", "wall.png", x, y)
         structures.append(wall)
 
