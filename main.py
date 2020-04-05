@@ -7,13 +7,16 @@ import pyxel, random
 import os.path
 from os import path
 
-# Width and height of game, in tiles
+# Width and height of game screen, in tiles
 WIDTH = 16
 HEIGHT = 12
 
 # Entities (should not) be able to walk through structures,
 #   unless they have "allow" set to True
 structures = []
+
+windowOffsetX = 0
+windowOffsetY = 0
 
 # Entities can move all over the place and stand in the same cube, but not walk
 #   into structures unless the structure has "allow" set to True
@@ -100,7 +103,10 @@ class Entity():
         pass
 
     def draw(self):
-        texture16[self.texName].draw(self.x, self.y)
+        drawX = self.x + windowOffsetX
+        drawY = self.y + windowOffsetY
+        if (drawX >= 0 and drawX < WIDTH) and (drawY >=0 and drawY < HEIGHT):
+            texture16[self.texName].draw(drawX, drawY)
 
 # The player class extends Entity by listening for keyboard events.
 class Player(Entity):
@@ -125,10 +131,13 @@ class Player(Entity):
 
             if (wantGoX != 0 or wantGoY != 0):
                 if canGo(self.x, self.y, wantGoX, wantGoY):
+                    global windowOffsetX, windowOffsetY
                 #if canGo(self.x + wantGoX, self.y + wantGoY, self.x, self.y):
                     self.x = self.x + wantGoX
                     self.y = self.y + wantGoY
                     self.cooldown = self.cooldownTime
+                    windowOffsetX -= wantGoX
+                    windowOffsetY -= wantGoY
 
 # This tells you if an entity is permitted to go somewhere.
 # From x,y with velocity a,b
