@@ -77,9 +77,10 @@ class Drawn():
 
 class Sounded():
     def __init__(self, name, notes, tone="s", volume="4", effect=("n" * 4 + "f"), speed=7):
-        self.id = len(sounds)
-        pyxel.sound(self.id).set(note=notes, tone=tone, volume=volume, effect=effect, speed=speed)
-        sounds[name] = self
+        if name not in sounds:
+            self.id = len(sounds)
+            pyxel.sound(self.id).set(note=notes, tone=tone, volume=volume, effect=effect, speed=speed)
+            sounds[name] = self
 
     # There are 4 streams - 0 through 3
     def play(self, stream=0):
